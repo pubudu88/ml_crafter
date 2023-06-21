@@ -146,8 +146,8 @@ def calc_CSI(train,
             category_names_list_trn = [col for col in train.columns if col.startswith(one_hot_prefix)]
             category_names_list_tst = [col for col in test.columns if col.startswith(one_hot_prefix)]
 
-            train = get_origin_feature_from_one_hot(train, category_names_list, feature)
-            test = get_origin_feature_from_one_hot(test, category_names_list, feature)
+            train = get_origin_feature_from_one_hot(train, category_names_list_trn, feature)
+            test = get_origin_feature_from_one_hot(test, category_names_list_tst, feature)
 
             train[one_hot_prefix] = train[one_hot_prefix].str.replace(one_hot_prefix + '_', '')
             test[one_hot_prefix] = test[one_hot_prefix].str.replace(one_hot_prefix + '_', '')

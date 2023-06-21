@@ -1,11 +1,12 @@
-from setuptools import setup
+import setuptools
 
-setup(
+setuptools.setup(
     name='ml-crafter',
     version='0.1.0',
     description='Performs end to end ML model development',
-    packages=['ml_crafter'],
-    install_requires=[
+    packages=setuptools.find_packages(),
+    install_requires=[ "numpy",
+        "scipy",
         # List your package dependencies here
     ],
 )
