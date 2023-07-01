@@ -85,11 +85,12 @@ def get_majority_feature_type(df, feature):
 
     """
 
-    n_total_row = len(df)
 
-    df['dtype'] = df[feature].apply(get_data_type)
+    df_dropped_na = df[feature].dropna()
 
-    majority_data_type = df['dtype'].value_counts().sort_values().tail(1).index[0]
+    df_dropped_na['dtype'] = df_dropped_na.apply(get_data_type)
+
+    majority_data_type = df_dropped_na['dtype'].value_counts().sort_values().tail(1).index[0]
 
     return majority_data_type
 
@@ -133,6 +134,10 @@ def get_inferred_data_type(feature, identified_data_type, Is_Binary, is_continuo
         else:
             return 'error'
 
+def count_nans(df, feature):
+    nan_count = df[feature].isna().sum()
+    return nan_count
+
 
 def run_data_type_analysis(df, c=0.15):
     """
@@ -149,7 +154,7 @@ def run_data_type_analysis(df, c=0.15):
     df_dtypes['infer_date_dtype'] = df.columns.to_series().apply(lambda x: 'date' if x in date_columns \
         else df_dtypes.loc[x, 'raw_data_type'])
 
-    df_dtypes['actual_data_types'] = [(list(df[i].apply(get_data_type).unique()) if i in object_columns \
+    df_dtypes['actual_data_types'] = [(list(df[i].dropna().apply(get_data_type).unique()) if i in object_columns \
                                            else df_dtypes.loc[i, 'infer_date_dtype']) for i in df_dtypes.index]
 
     df_dtypes['Num_of_diff_datatypes'] = df_dtypes['actual_data_types'].apply(
@@ -170,7 +175,11 @@ def run_data_type_analysis(df, c=0.15):
                                                                                          row['Num_of_diff_datatypes']),
                                                       axis=1)
 
-    df_dtypes = df_dtypes[['Column', 'raw_data_type', 'inferred_data_type', 'Num_of_diff_datatypes']]
+    df_dtypes['nan_count'] = df_dtypes['Column'].apply(lambda x: count_nans(df, x))
+
+    df_dtypes = df_dtypes[['Column', 'raw_data_type', 'inferred_data_type', 'Num_of_diff_datatypes','nan_count']]
+
+    df_dtypes = df_dtypes.loc[df_dtypes.index != 'dtype']
 
     return df_dtypes
 
