@@ -55,10 +55,10 @@ def is_feature_continuous(df, feature, c=0.15):
 
     """
 
-    n_total_row = len(df)
+    df_na_dropped = df[feature].dropna()
 
     # Apply the function to a column and return all values in a list
-    num_values = df[feature].apply(get_num_vals).tolist()
+    num_values = df_na_dropped.apply(get_num_vals).tolist()
     # numerical values after removing str items if there is any
     num_values_without_str = [i for i in num_values if i != 'str']
 
@@ -74,7 +74,10 @@ def is_feature_continuous(df, feature, c=0.15):
     # by mistake
     elif len(num_values_without_str) < len(num_values) * 0.5:
         return 0
-    elif num_unique_val_count / num_values_without_str_count <= c:
+        # if there is only one unique numeric value in a column, it's not an important column
+        # and we cant say its a numerical categorical (ordinal) column therefore classify it as continuous
+        # thats the reason for having num_unique_val_count > 1 condition below
+    elif num_unique_val_count / num_values_without_str_count <= c and num_unique_val_count > 1:
         return 0
     else:
         return 1
@@ -177,7 +180,7 @@ def run_data_type_analysis(df, c=0.15):
 
     df_dtypes['nan_count'] = df_dtypes['Column'].apply(lambda x: count_nans(df, x))
 
-    df_dtypes = df_dtypes[['Column', 'raw_data_type', 'inferred_data_type', 'Num_of_diff_datatypes','nan_count']]
+    df_dtypes = df_dtypes[['Column', 'raw_data_type','actual_data_types', 'inferred_data_type', 'Num_of_diff_datatypes','nan_count']]
 
     df_dtypes = df_dtypes.loc[df_dtypes.index != 'dtype']
 
