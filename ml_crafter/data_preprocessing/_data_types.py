@@ -46,7 +46,7 @@ def get_num_vals(value):
             return 'str'
 
 
-def is_feature_continuous(df, feature, c=0.15):
+def is_feature_continuous(df, feature,majority_data_type, c=0.15):
     """
 
     c : To idenfy if a numerical column is ordinal (categorical), check the number of unique values
@@ -79,6 +79,8 @@ def is_feature_continuous(df, feature, c=0.15):
         # thats the reason for having num_unique_val_count > 1 condition below
     elif num_unique_val_count / num_values_without_str_count <= c and num_unique_val_count > 1:
         return 0
+    elif majority_data_type in ['str','date']:
+        return 0
     else:
         return 1
 
@@ -107,12 +109,12 @@ def is_column_binary(df, column):
 
 
 def get_inferred_data_type(feature, identified_data_type, Is_Binary, is_continuous, majority_data_type,
-                           Num_of_diff_datatypes):
+                           Num_of_diff_datatypes,infer_date_dtype):
     if not isinstance(identified_data_type, list):
         identified_data_type = [identified_data_type]
 
     if Num_of_diff_datatypes == 1:
-        if 'date' in identified_data_type[0]:
+        if 'date' in identified_data_type[0] or infer_date_dtype == 'date':
             return 'date'
         elif Is_Binary == 1:
             return 'binary'
@@ -147,6 +149,15 @@ def run_data_type_analysis(df, c=0.15):
         c : To idenfy if a numerical column is ordinal (categorical), check the number of unique values
         compared to the total number of values. This parameter is the ratio between the two
 
+        Note
+        ----
+
+        - id cols can have "continuous" inferred_data_type
+        - for ordinal or categorical fields with int/float raw type will show "numerical_categorical" inferred data type
+          however, due to the method used to identify this dtype, even continuous fields can be "numerical_categorical"
+          if the number of unique values are low in the column
+
+
     """
 
     df_dtypes = get_column_data_types(df)
@@ -158,14 +169,17 @@ def run_data_type_analysis(df, c=0.15):
         else df_dtypes.loc[x, 'raw_data_type'])
 
     df_dtypes['actual_data_types'] = [(list(df[i].dropna().apply(get_data_type).unique()) if i in object_columns \
-                                           else df_dtypes.loc[i, 'infer_date_dtype']) for i in df_dtypes.index]
+                                           else [df_dtypes.loc[i, 'infer_date_dtype']]) for i in df_dtypes.index]
 
     df_dtypes['Num_of_diff_datatypes'] = df_dtypes['actual_data_types'].apply(
         lambda x: len(x) if isinstance(x, list) else 1)
 
-    df_dtypes['is_continuous'] = df_dtypes['Column'].apply(lambda r: is_feature_continuous(df, r, c=c))
-
     df_dtypes['majority_data_type'] = df_dtypes['Column'].apply(lambda r: get_majority_feature_type(df, r))
+
+    df_dtypes['is_continuous'] = df_dtypes.apply(lambda row: is_feature_continuous(df, row['Column']
+                                                                                   , row['majority_data_type'],
+                                                                                   c=c),
+                                                 axis=1)
 
     df_dtypes['Is_Binary'] = df_dtypes['Column'].apply(lambda x: is_column_binary(df, x))
 
@@ -175,16 +189,20 @@ def run_data_type_analysis(df, c=0.15):
                                                                                          , row['is_continuous']
                                                                                          , row['majority_data_type']
                                                                                          ,
-                                                                                         row['Num_of_diff_datatypes']),
+                                                                                         row['Num_of_diff_datatypes'],
+                                                                                         row['infer_date_dtype']),
                                                       axis=1)
 
     df_dtypes['nan_count'] = df_dtypes['Column'].apply(lambda x: count_nans(df, x))
 
-    df_dtypes = df_dtypes[['Column', 'raw_data_type','actual_data_types', 'inferred_data_type', 'Num_of_diff_datatypes','nan_count']]
+    df_dtypes = df_dtypes[
+        ['Column', 'raw_data_type', 'actual_data_types', 'inferred_data_type'
+            , 'Num_of_diff_datatypes', 'nan_count']]
 
     df_dtypes = df_dtypes.loc[df_dtypes.index != 'dtype']
 
     return df_dtypes
+
 
 
 
